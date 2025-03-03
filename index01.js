@@ -1,14 +1,17 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const mysql = require('mysql2/promise');
+const cors = require('cors');
 const app = express();
 
 app.use(bodyParser.json());
+app.use(cors());
 const port = 8000;
 
 // เก็บ user
 let users = []
-let conn = null
+let counter = 1
+
 /*
 Get /users  สำหรับ user  ทั้งหมด
 POST /user สำหรับสร้าง user ใหม่บันทึกเข้าไป
@@ -16,53 +19,47 @@ GET /user/:id สำหรับดูข้อมูล user ที่มี id
 PUT /user/:id สำหรับแก้ไข user ที่มี id ตามที่ระบุ
 DELETE /user/:id สำหรับลบ user ที่มี id ตามที่ระบุ
 */
-const initMySQL = async () => {
-    conn = await mysql.createConnection({
+app.get('/testdb', async (req, res) => {
+    mysql.createConnection({
         host: 'localhost',
         user:'root',
         password: 'root',
         database: 'webdb',
         port: 8830
-    })
-}
-
-app.get('/testdb-new', async (req, res) => {
-    try {
-    const results = await conn.query('SELECT * FROM users')
-    res.json(results[0])
-    } catch (error) {
+    }).then((conn) => {
+        conn
+        .query('SELECT * FROM users')
+        .then((results) => {
+            res.json(results[0])
+        })
+        .catch((error) => {
             console.log('Error fetching users:', error.message)
             res.status(500).json({error: 'Error fetching users'})
-     }  
-
-    const conn = await mysql.createConnection({
-        host: 'localhost',
-        user:'root',
-        password: 'root',
-        database: 'webdb',
-        port: 8830
+        })
     })
-    const results = await conn.query('SELECT * FROM users')
-    res.json(results[0])
-    
-})
+})    
+
+
 
 // path = get /users
-app.get('/users', async (req, res) => {
-    const results = await conn.query('SELECT * FROM users')
-    res.json(results[0])
+app.get('/testdb', (req, res) => {
+    res.json(users);
 })
 
+
+
+
+
 // path = POST / user
-app.post('/users', async (req, res) => {
+app.post('/user', (req, res) => {
     let user = req.body;
-    const results = await conn.query('INSERT INTO users SET ?', user)
-    console.log('results:', results)
+    user.id = counter
+    counter += 1
+    users.push(user);
     res.json({
         message: "User created",
-        data: results[0]
-         
-    });  
+        user: user
+    });
 })
 
 //path = put /user/ : id
@@ -102,7 +99,7 @@ app.delete('/user/:id', (req, res) => {
      });
 })
  
-app.listen(port, async (req, res) => {
-    await initMySQL()
+
+app.listen(port, (req, res) => {
     console.log('server is running on port' + port);
 });
